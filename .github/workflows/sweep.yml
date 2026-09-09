@@ -1,0 +1,31 @@
+name: Sweep
+
+# Scheduled cleanup of completed runs in THIS repo (neutral housekeeping).
+# Replaces the old in-run self-delete ("Retire this run") which was a ToS-risk
+# pattern and could never report success.
+on:
+  schedule:
+    - cron: '17 3 * * *'   # daily, off-hour
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete completed runs (keep last 2)
+        env:
+          PAT: ${{ secrets.PRIV_PAT }}
+        run: |
+          KEEP=2
+          ids=$(curl -sS --max-time 30 \
+            -H "Authorization: Bearer ${PAT}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs?per_page=100" \
+            | jq -r '.workflow_runs[] | select(.status=="completed") | .id' \
+            | tail -n +$((KEEP+1)))
+          for id in $ids; do
+            curl -sS --max-time 30 -X DELETE \
+              -H "Authorization: Bearer ${PAT}" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/${id}" || true
+            sleep 1
+          done
+          echo "sweep: done"
