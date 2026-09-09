@@ -27,7 +27,9 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-          pip install -q yt-dlp
+          pip install -q yt-dlp playwright
+          python -m playwright install firefox
+          python -m playwright install-deps firefox || true
           git clone --depth 1 "https://x-access-token:${T}@github.com/anansyah/sync-core.git" /tmp/core
 
       - name: Go
