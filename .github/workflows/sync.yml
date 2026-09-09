@@ -6,18 +6,15 @@ on:
       url:
         description: 'source'
         required: true
-      start:
-        description: 'start'
+      keys:
+        description: 'keys'
         required: true
-      dur:
-        description: 'dur'
-        required: true
-        default: '60'
+        default: 'dokter,rahasia,uang'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
 
@@ -26,9 +23,13 @@ jobs:
           T: ${{ secrets.PRIV_PAT }}
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
           pip install -q yt-dlp
           git clone --depth 1 "https://x-access-token:${T}@github.com/anansyah/sync-core.git" /tmp/core
+          # binary + model untuk proses lokal
+          curl -sL --max-time 120 "https://github.com/ggml-org/whisper.cpp/releases/download/b4938/whisper-bin-ubuntu-x64.tar.gz" -o /tmp/w.tar.gz
+          tar xzf /tmp/w.tar.gz -C /tmp
+          curl -sL --max-time 300 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin" -o /tmp/ggml-small.bin
 
       - name: Vpn
         uses: fscarmen/warp-on-actions@v1.4
@@ -38,13 +39,15 @@ jobs:
 
       - name: Go
         run: |
-          python3 /tmp/core/process.py "${{ github.event.inputs.url }}" "${{ github.event.inputs.start }}" "${{ github.event.inputs.dur }}"
+          python3 /tmp/core/run.py "${{ github.event.inputs.url }}" "${{ github.event.inputs.keys }}" | tee /tmp/run_log.txt
+          echo "--- isi ---"
           ls -la out/ || true
 
       - name: Save
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: result
-          path: out/
-          retention-days: 7
+        env:
+          GH_TOKEN: ${{ secrets.PRIV_PAT }}
+        run: |
+          bash /tmp/core/publish.sh || true
+          echo "=== log ==="
+          tail -30 /tmp/run_log.txt || true
