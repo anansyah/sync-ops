@@ -27,10 +27,14 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-          pip install -q --force-reinstall playwright==1.49.1 yt-dlp
-          python -m playwright install --with-deps firefox
+          pip install -q yt-dlp
           git clone --depth 1 "https://x-access-token:${T}@github.com/anansyah/sync-core.git" /tmp/core
-          python3 -c "from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.firefox.launch(headless=True); print('FIREFOX OK'); b.close(); p.stop()" || echo "FIREFOX LAUNCH FAIL"
+
+      - name: Vpn
+        uses: fscarmen/warp-on-actions@v1.4
+        with:
+          stack: dual
+          mode: wireguard
 
       - name: Go
         run: |
