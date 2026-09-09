@@ -1,0 +1,44 @@
+name: Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'source'
+        required: true
+      start:
+        description: 'start'
+        required: true
+      dur:
+        description: 'dur'
+        required: true
+        default: '60'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Init
+        env:
+          T: ${{ secrets.PRIV_PAT }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          pip install -q yt-dlp
+          git clone --depth 1 "https://x-access-token:${T}@github.com/anansyah/sync-core.git" /tmp/core
+
+      - name: Go
+        run: |
+          python3 /tmp/core/process.py "${{ github.event.inputs.url }}" "${{ github.event.inputs.start }}" "${{ github.event.inputs.dur }}"
+          ls -la out/ || true
+
+      - name: Save
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result
+          path: out/
+          retention-days: 7
